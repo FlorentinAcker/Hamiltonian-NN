@@ -1,4 +1,3 @@
-import torch
 import scipy
 import numpy as np
 from joblib import Parallel, delayed
