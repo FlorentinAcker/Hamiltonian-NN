@@ -31,7 +31,10 @@ def simulate_batch(z0, dt, T, nb_iter=5):
     states[0, :, 0] = z0 
     for i in range(1, N_steps + 1):
         states[:, i, :] = step_midpoint(states[:, i-1, :], dt=dt, nb_iter=nb_iter)
-        return states
+    return states 
+#%%
+z0 = torch.normal(0, 1, (5, 4))
+states = simulate_batch(z0, 0.01, 1, nb_iter=5)
 
 
 
