@@ -3,8 +3,6 @@ import matplotlib.pyplot as plt
 from matplotlib.animation import FuncAnimation
 from data_generation import solve_one_ic, generate_ic
 
-%matplotlib notebook
-
 def animate_trajectory(traj, dt=0.01):
     """
     traj : np.ndarray (T, 4) with [theta1, theta2, p1, p2]
