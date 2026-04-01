@@ -1,42 +1,30 @@
 #%%
+%matplotlib inline
 import torch
-
-# %%
+import scipy
+#%%
 def hamiltonian(state):
-    """Takes as argument a state and returns the Hamiltonian"""
+    th1, th2, p1, p2 = state.unbind(-1)
+    d = th1 - th2 
+    H_kin = (p1**2 + 2*p2**2 - 2*p1*p2*d.cos()) / (2*(2 - d.cos()**2))
+    H_pot = - 2*th1.cos() - th2.cos()
+    return H_kin + H_pot
 
 def derivatives(state):
     th1, th2, p1, p2 = state.unbind(-1)
-    d = th1 - th2 
-    det = 2 - d.cos()**2 
-    N = p1**2 + p2**2 - 2*p1*p2*d.cos()
-    dth1 = (p1 - p2*d.cos()) / det
-    dth2 = (2*p2 - p1*d.cos()) / det    
-    dp1 = p1*p2*d.sin()/det - N*d.sin()*d.cos()/det**2 - 2*th1.sin()
-    dp2= p1*p2*d.sin()/det + N*d.sin()*d.cos()/det**2 - th2.sin()
+    d = th1 - th2
+    c = d.cos()
+    s = d.sin()
 
-def iter_midpoint(state, dt, nb_iter=5):
-    z_mid = state.clone()
-    for i in range(nb_iter):
-        z_mid = state + dt/2*derivatives(z_mid)
-    return z_mid
+    D = 2 - c**2
+    N = p1**2 + 2*p2**2 - 2*p1*p2*c
 
-def step_midpoint(state, dt, nb_iter=5):
-    z_mid = iter_midpoint(state, dt, nb_iter=nb_iter)
-    return state + dt*derivatives(z_mid)
+    dth1 = (p1 - p2*c) / D
+    dth2 = (2*p2 - p1*c) / D
 
-def simulate_batch(z0, dt, T, nb_iter=5):
-    N_steps = int(T / dt)
-    states = torch.zeros(z0.shape[0], N_steps+1, 4)
-    states[0, :, 0] = z0 
-    for i in range(1, N_steps + 1):
-        states[:, i, :] = step_midpoint(states[:, i-1, :], dt=dt, nb_iter=nb_iter)
-    return states 
-#%%
-z0 = torch.normal(0, 1, (5, 4))
-states = simulate_batch(z0, 0.01, 1, nb_iter=5)
+    common = p1*p2*s / D - N*s*c / D**2
+    dp1 = -common - 2*th1.sin()
+    dp2 =  common - th2.sin()
 
+    return torch.stack((dth1, dth2, dp1, dp2), dim=-1)
 
-
-
-# %%
