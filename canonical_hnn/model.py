@@ -1,8 +1,7 @@
-#%%
 import torch
 import torch.nn as nn
 import torch.nn.functional as F 
-#%%
+
 def symplectic_form(n):
     I = torch.eye(n)
     Z = torch.zeros(n, n)
