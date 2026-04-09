@@ -23,18 +23,32 @@ def hnn_loss(model, y0, y1, h, s):
     dxdt = model.derivative(y_eval)
     return l2_loss(dxdt_hat, dxdt)
 
-def train(model, y0, y1, h, s, n_epochs, lr, weight_decay, verbose=True):
+def train(model, train_loader, test_loader, h, s, n_epochs=1500, lr=1e-3, weight_decay=1e-2, verbose=True, device=None):
+    if device is None:
+        device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    model = model.to(device)
     optimizer = torch.optim.AdamW(model.parameters(), lr=lr, weight_decay=weight_decay)
-    hist = []
+    hist_train ,hist_test = [], []
     for epoch in range(n_epochs):
-        optimizer.zero_grad()
-        loss = hnn_loss(model, y0, y1, h, s)
-        loss.backward()
-        optimizer.step()
-        hist.append(loss.item())
-        if verbose and (epoch + 1) % 100 == 0:
-            print(f"epoch {epoch+1} / {n_epochs}, loss: {loss.item()}")
-    return hist, model
+        model.train()
+        batch_loss = 0.
+        for y0, y1 in train_loader:
+            y0, y1 = y0.to(device, non_blocking=True), y1.to(device, non_blocking=True)
+            optimizer.zero_grad()
+            loss = hnn_loss(model, y0, y1, h, s)
+            loss.backward()
+            optimizer.step()
+            batch_loss += loss.item() * len(y0)
+        hist_train.append(batch_loss / len(train_loader.dataset))
+        model.eval()
+        test_loss = sum(
+            hnn_loss(model, y0, y1, h, s).item() * len(y0)
+            for y0, y1 in test_loader
+        ) / len(test_loader.dataset)
+        hist_test.append(test_loss)
+    return model, hist_train, hist_test
+
+
 
 
 
