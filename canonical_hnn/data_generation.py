@@ -1,7 +1,8 @@
-import scipy
+from scipy.integrate import solve_ivp 
 import numpy as np
 from joblib import Parallel, delayed
-import matplotlib.pyplot as plt
+import torch
+from torch.utils.data import TensorDataset, DataLoader
 
 def hamiltonian(state):
     th1, th2, p1, p2 = state[0], state[1], state[2], state[3]
@@ -34,7 +35,7 @@ def rhs(t, z):
 
 def solve_one_ic(z0, T):
     t_eval = np.linspace(0, T, 500)
-    sol = scipy.integrate.solve_ivp(
+    sol = solve_ivp(
         fun=rhs,
         t_span = (0, T),
         y0 = z0,
@@ -49,7 +50,7 @@ def solve_one_ic(z0, T):
     return sol.y.T
 
 def solve(z, T):
-    results = Parallel(n_jobs=8)(
+    results = Parallel(n_jobs=-2)(
         delayed(solve_one_ic)(z0, T) for z0 in z.T
     )
     return results
@@ -66,9 +67,31 @@ def generate_trajectories(N, low, high, T):
     z = generate_ic(N, low, high)
     return (z, np.array(solve(z, T)))
 
-def generate_dataset(N, low, high, T, k=5):
-    z, trajs = generate_trajectories(N, low, high, T)
-    y0 = trajs[:, :-k, :].reshape(-1, 4)
-    y1 = trajs[:, k:, :].reshape(-1, 4)
+def generate_dataset(N, low, high, T, k=5, batch_size=256):
+    z_train, trajs_train = generate_trajectories(N, low, high, T)
+    z_test, trajs_test = generate_trajectories(int(.25*N), low, high, T)
+
+    y0_train = torch.tensor(trajs_train[:, :-k, :].reshape(-1, 4), dtype=torch.float32)
+    y1_train = torch.tensor(trajs_train[:, k:,  :].reshape(-1, 4), dtype=torch.float32)
+    y0_test  = torch.tensor(trajs_test[:,  :-k, :].reshape(-1, 4), dtype=torch.float32)
+    y1_test  = torch.tensor(trajs_test[:,  k:,  :].reshape(-1, 4), dtype=torch.float32)
+    
     dt = T / 499
-    return y0, y1, dt 
+
+    train_loader = DataLoader(
+        TensorDataset(y0_train, y1_train),
+        batch_size=batch_size,
+        shuffle=True,
+        num_workers=4,
+        pin_memory=True,
+    )
+
+    test_loader = DataLoader(
+        TensorDataset(y0_test, y1_test),
+        batch_size=batch_size,
+        shuffle=False,
+        num_workers=4,
+        pin_memory=True,
+    )
+    
+    return train_loader, test_loader, dt
