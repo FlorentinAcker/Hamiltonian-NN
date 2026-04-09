@@ -1,6 +1,5 @@
 import torch
 import torch.nn as nn
-import torch.nn.functional as F 
 
 def symplectic_form(n):
     I = torch.eye(n)
@@ -36,9 +35,10 @@ class HNN(nn.Module):
         return self.model(x)
     
     def derivative(self, x):
-        x = x.detach().requires_grad_(True)
-        H = self.forward(x).squeeze(-1)
-        gradH = torch.autograd.grad(H.sum(), x, create_graph=True)[0]
+        with torch.enable_grad():
+            x = x.detach().requires_grad_(True)
+            H = self.forward(x).squeeze(-1)
+            gradH = torch.autograd.grad(H.sum(), x, create_graph=True)[0]
         vector_field = torch.einsum('ij, aj -> ai', self.J.T, gradH)
 
         return vector_field
