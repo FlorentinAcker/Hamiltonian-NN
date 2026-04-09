@@ -42,15 +42,8 @@ def train(model, train_loader, test_loader, h, s, n_epochs=1500, lr=1e-3, weight
         hist_train.append(batch_loss / len(train_loader.dataset))
         model.eval()
         test_loss = sum(
-            hnn_loss(model, y0, y1, h, s).item() * len(y0)
+            hnn_loss(model, y0.to(device), y1.to(device), h, s).item() * len(y0)
             for y0, y1 in test_loader
         ) / len(test_loader.dataset)
         hist_test.append(test_loss)
     return model, hist_train, hist_test
-
-
-
-
-
-          
-
